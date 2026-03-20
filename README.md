@@ -15,14 +15,13 @@ This repo is intentionally config-driven so you can iterate quickly on:
 
 ## What this gives you
 
-- A reusable Pioneer API client (`/v1/models`, `/v1/files`, `/v1/fine_tuning/jobs`)
+- A reusable Pioneer API client (`/v1/models`, `/v1/chat/completions`, `/felix/datasets/upload`, `/felix/training-jobs`)
 - A benchmark runner that executes arbitrary commands and parses scores
 - Weighted aggregation across benchmarks
 - Adaptive loop:
-  - evaluate a candidate model
-  - launch finetune job when below target
-  - re-evaluate tuned model
-  - promote tuned model only if gain clears threshold
+  - establish inference baselines first (seed + candidates)
+  - launch Felix fine-tune jobs when below target
+  - track training status/loss per iteration
 - JSON history + summary artifacts in `outputs/`
 
 ---
@@ -54,7 +53,7 @@ pioneer-adaptive validate-config configs/experiment.yaml
 ### 4) Run benchmark-only evaluation
 
 ```bash
-pioneer-adaptive run-benchmarks "pioneer/small-coder-base" configs/experiment.yaml
+pioneer-adaptive run-benchmarks "llama-3.1-8b" configs/experiment.yaml
 ```
 
 ### 5) Run adaptive finetuning cycle
@@ -77,7 +76,9 @@ configs/experiment.yaml             # Main experiment config
 data/train.jsonl                    # Example train file
 data/valid.jsonl                    # Example validation file
 scripts/setup_benchmarks.sh         # Clone external benchmark repos
-scripts/run_*_stub.py               # Local stub benchmark runners
+scripts/run_livecodebench_mini.py   # LiveCodeBench mini baseline runner
+scripts/run_aider_refactor_mini.py  # Aider refactor mini baseline runner
+scripts/run_*_stub.py               # Optional deterministic dry-run runners
 src/pioneer_adaptive/
   config.py                         # Pydantic config schema
   pioneer_client.py                 # Pioneer API wrapper
@@ -89,11 +90,14 @@ tests/
 
 ---
 
-## Moving from stubs to real benchmarks
+## Benchmarks used by default
 
-Default config points to stub runners so the system is runnable immediately.
+Default config points to **real mini benchmark subsets**:
 
-To wire real benchmarks:
+- `scripts/run_livecodebench_mini.py`: runs a subset of LiveCodeBench code-generation tasks via Pioneer inference and computes pass@1.
+- `scripts/run_aider_refactor_mini.py`: runs a subset of Aider refactor tasks and checks refactor correctness via AST rules.
+
+To prepare benchmark assets:
 
 1. Clone benchmark repos:
 
@@ -101,15 +105,7 @@ To wire real benchmarks:
    ./scripts/setup_benchmarks.sh
    ```
 
-2. Update `configs/experiment.yaml` benchmark command blocks to real commands.
-
-   Example LiveCodeBench invocation pattern:
-
-   ```bash
-   python -m lcb_runner.runner.main --model <MODEL> --scenario codegeneration --evaluate --release_version release_v2
-   ```
-
-3. Ensure each benchmark emits a metric artifact (JSON file or JSON stdout), then point parser fields:
+2. Ensure each benchmark emits a metric artifact (JSON file or JSON stdout), then point parser fields:
 
 - `parser.mode`: `json_file`, `stdout_json`, or `regex`
 - `parser.key_path`: dot path to metric field, e.g. `metrics.pass_at_1`
@@ -129,6 +125,7 @@ pioneer-adaptive run-cycle [CONFIG_PATH]
 
 ## Notes
 
-- The API workflow is implemented in an OpenAI-compatible shape (`/v1/files`, `/v1/fine_tuning/jobs`).
+- Baseline inference uses OpenAI-compatible Pioneer endpoint (`/v1/chat/completions`).
+- Fine-tuning uses Felix endpoints (`/felix/datasets/upload`, `/felix/training-jobs`).
 - If your Pioneer tenant uses custom endpoint conventions, adjust `src/pioneer_adaptive/pioneer_client.py`.
 - Adaptive policy knobs live under `policy` in `configs/experiment.yaml`.

@@ -1,57 +1,65 @@
-api_base_url: "https://api.pioneer.ai/v1"
+api_base_url: "https://api.pioneer.ai"
 api_key_env: "PIONEER_API_KEY"
 
-# Starting point model and optional existing candidates to evaluate each cycle.
-seed_model: "pioneer/small-coder-base"
+# Baseline inference models available on Pioneer /v1/chat/completions.
+seed_model: "llama-3.1-8b"
 candidate_models:
-  - "pioneer/small-coder-instruct"
+  - "qwen-2.5-coder"
 
 output_dir: "outputs"
 
 benchmarks:
-  - name: "livecodebench"
+  - name: "livecodebench_mini"
     enabled: true
     weight: 0.6
     cwd: "."
     command:
       - "python3"
-      - "scripts/run_livecodebench_stub.py"
+      - "scripts/run_livecodebench_mini.py"
       - "--model-id"
       - "{model_id}"
       - "--out"
       - "outputs/livecodebench.json"
+      - "--limit"
+      - "8"
     parser:
       mode: "json_file"
       json_path: "outputs/livecodebench.json"
       key_path: "metrics.pass_at_1"
 
-  - name: "aider_editing"
+  - name: "aider_refactor_mini"
     enabled: true
     weight: 0.4
     cwd: "."
     command:
       - "python3"
-      - "scripts/run_aider_benchmark_stub.py"
+      - "scripts/run_aider_refactor_mini.py"
       - "--model-id"
       - "{model_id}"
       - "--out"
       - "outputs/aider.json"
+      - "--limit"
+      - "6"
     parser:
       mode: "json_file"
       json_path: "outputs/aider.json"
       key_path: "metrics.success_rate"
 
 finetune:
-  # Prefer training_file_id once your data is already uploaded.
   training_file_path: "data/train.jsonl"
-  validation_file_path: "data/valid.jsonl"
-  suffix: "adaptive-coder"
+  dataset_type: "decoder"
+  base_model: "Qwen/Qwen3-8B"
+  model_name_prefix: "cursor-adaptive-coder"
+  training_type: "lora"
   hyperparameters:
-    n_epochs: 2
+    nr_epochs: 1
+    batch_size: 1
+    learning_rate: 0.00005
+    save_steps: 1
 
 policy:
-  max_iterations: 4
-  target_score: 0.70
+  max_iterations: 2
+  target_score: 0.75
   exploration_rate: 0.25
   minimum_gain: 0.01
   random_seed: 11

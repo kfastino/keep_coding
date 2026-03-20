@@ -46,18 +46,18 @@ class BenchmarkConfig(BaseModel):
 
 class FinetuneConfig(BaseModel):
     training_file_path: str | None = None
-    training_file_id: str | None = None
     validation_file_path: str | None = None
-    validation_file_id: str | None = None
-    suffix: str = "adaptive"
+    dataset_name: str | None = None
+    dataset_type: Literal["classification", "ner", "custom", "decoder"] = "decoder"
+    base_model: str = "Qwen/Qwen3-8B"
+    model_name_prefix: str = "adaptive-coder"
+    training_type: Literal["lora", "full"] = "lora"
     hyperparameters: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def validate_training_source(self) -> "FinetuneConfig":
-        if not self.training_file_path and not self.training_file_id:
-            raise ValueError(
-                "Provide finetune.training_file_path or finetune.training_file_id"
-            )
+        if not self.training_file_path:
+            raise ValueError("Provide finetune.training_file_path")
         return self
 
 
@@ -70,7 +70,7 @@ class AdaptivePolicyConfig(BaseModel):
 
 
 class ExperimentConfig(BaseModel):
-    api_base_url: str = "https://api.pioneer.ai/v1"
+    api_base_url: str = "https://api.pioneer.ai"
     api_key_env: str = "PIONEER_API_KEY"
     seed_model: str
     candidate_models: list[str] = Field(default_factory=list)
