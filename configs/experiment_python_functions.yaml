@@ -1,0 +1,50 @@
+api_base_url: "https://api.pioneer.ai"
+api_key_env: "PIONEER_API_KEY"
+
+# Compare base decoder vs tuned training-job IDs on a deterministic function benchmark.
+seed_model: "base:Qwen/Qwen3-8B"
+candidate_models:
+  - "aa348126-35a8-4fd9-a3e4-4b133d374c9a"
+
+output_dir: "outputs"
+
+benchmarks:
+  - name: "python_functions_20"
+    enabled: true
+    weight: 1.0
+    cwd: "."
+    command:
+      - "python3"
+      - "scripts/run_python_functions_benchmark.py"
+      - "--model-id"
+      - "{model_id}"
+      - "--out"
+      - "outputs/python_functions.json"
+      - "--repeat"
+      - "1"
+      - "--max-tokens"
+      - "1800"
+    parser:
+      mode: "json_file"
+      json_path: "outputs/python_functions.json"
+      key_path: "metrics.functional_pass_rate_avg"
+
+finetune:
+  training_file_path: "data/train.jsonl"
+  dataset_type: "decoder"
+  base_model: "Qwen/Qwen3-8B"
+  model_name_prefix: "cursor-adaptive-coder"
+  training_type: "lora"
+  hyperparameters:
+    nr_epochs: 1
+    batch_size: 1
+    learning_rate: 0.00005
+    save_steps: 1
+
+policy:
+  max_iterations: 1
+  target_score: 0.82
+  exploration_rate: 0.0
+  minimum_gain: 0.01
+  random_seed: 11
+

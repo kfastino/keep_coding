@@ -78,6 +78,7 @@ data/valid.jsonl                    # Example validation file
 scripts/setup_benchmarks.sh         # Clone external benchmark repos
 scripts/run_livecodebench_mini.py   # LiveCodeBench mini baseline runner
 scripts/run_aider_refactor_mini.py  # Aider refactor mini baseline runner
+scripts/run_python_functions_benchmark.py # Deterministic 20-task function benchmark
 scripts/run_*_stub.py               # Optional deterministic dry-run runners
 src/pioneer_adaptive/
   config.py                         # Pydantic config schema
@@ -120,6 +121,31 @@ pioneer-adaptive list-models [CONFIG_PATH]
 pioneer-adaptive run-benchmarks MODEL_ID [CONFIG_PATH]
 pioneer-adaptive run-cycle [CONFIG_PATH]
 ```
+
+## Additional benchmark for adaptive sweeps
+
+For quicker and more stable coding experiments (less sensitive to huge prompt context),
+use the included deterministic function benchmark:
+
+```bash
+python3 scripts/run_python_functions_benchmark.py \
+  --model-id "base:Qwen/Qwen3-8B" \
+  --out outputs/experiments/python_functions_base.json \
+  --repeat 3 \
+  --max-tokens 1800
+```
+
+You can run the same benchmark against a tuned decoder job ID:
+
+```bash
+python3 scripts/run_python_functions_benchmark.py \
+  --model-id "<training-job-uuid>" \
+  --out outputs/experiments/python_functions_tuned.json \
+  --repeat 3 \
+  --max-tokens 1800
+```
+
+An example config is provided at `configs/experiment_python_functions.yaml`.
 
 ---
 

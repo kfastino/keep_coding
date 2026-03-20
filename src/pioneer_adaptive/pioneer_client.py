@@ -63,6 +63,11 @@ class PioneerClient:
         known = {str(model.get("id")) for model in models if model.get("id")}
         return model_id in known
 
+    @staticmethod
+    def _use_generate_inference(model_id: str) -> bool:
+        # Use /inference for tuned decoder jobs (UUID) and explicit base decoder IDs.
+        return bool(PioneerClient._UUID_PATTERN.match(model_id) or model_id.startswith("base:"))
+
     def chat_completion(
         self,
         model_id: str,
@@ -71,7 +76,7 @@ class PioneerClient:
         temperature: float = 0.2,
         max_tokens: int = 512,
     ) -> str:
-        if self._UUID_PATTERN.match(model_id):
+        if self._use_generate_inference(model_id):
             payload = self._request(
                 "POST",
                 "/inference",
