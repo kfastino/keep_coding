@@ -18,7 +18,7 @@ app = typer.Typer(help="Adaptive finetuning experiments for Pioneer models.")
 def _load(path: str) -> tuple[ExperimentConfig, Path]:
     config_path = Path(path).resolve()
     config = load_config(config_path)
-    return config, config_path.parent
+    return config, Path.cwd().resolve()
 
 
 @app.command("validate-config")

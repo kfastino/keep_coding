@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from pioneer_adaptive.benchmarking import _dot_lookup, _parse_score, weighted_score
 from pioneer_adaptive.config import ScoreParserConfig
 
@@ -33,5 +35,5 @@ def test_weighted_score() -> None:
         [Item("a", 0.8), Item("b", 0.4)],  # type: ignore[arg-type]
         {"a": 0.75, "b": 0.25},
     )
-    assert score == 0.7
+    assert score == pytest.approx(0.7)
 
