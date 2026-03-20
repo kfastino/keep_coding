@@ -151,7 +151,17 @@ An example config is provided at `configs/experiment_python_functions.yaml`.
 
 ## Notes
 
-- Baseline inference uses OpenAI-compatible Pioneer endpoint (`/v1/chat/completions`).
+- Baseline inference uses:
+  - `/v1/chat/completions` for standard inference model IDs
+  - `/inference` for `base:*` decoder IDs
+- Tuned decoder inference uses `/inference` with the **training job UUID** as `model_id`.
 - Fine-tuning uses Felix endpoints (`/felix/datasets/upload`, `/felix/training-jobs`).
 - If your Pioneer tenant uses custom endpoint conventions, adjust `src/pioneer_adaptive/pioneer_client.py`.
 - Adaptive policy knobs live under `policy` in `configs/experiment.yaml`.
+
+## Latest experiment learnings
+
+- Mini LiveCodeBench/Aider runs are highly sensitive to long `<think>` traces and token budget.
+- Session instability (`Too many active sessions`) can impact both inference and training jobs.
+- On a deterministic executable benchmark (`python_functions_20`), we observed small but repeatable tuned improvements in some runs.
+- Committed experiment artifacts are stored in `results/`.
