@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import random
-import time
+import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -21,11 +21,16 @@ class IterationRecord:
     aggregate_score: float
     finetune_job_id: str | None
     promoted_model: str | None
-    training_status: str | None = None
-    training_loss: float | None = None
+    agent_answer: str | None = None
+    conversation_id: str | None = None
+    tool_calls_made: int | None = None
 
 
 class AdaptiveFinetuningLoop:
+    UUID_PATTERN = re.compile(
+        r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+    )
+
     def __init__(self, config: ExperimentConfig, project_root: Path) -> None:
         self.config = config
         self.project_root = project_root
@@ -37,7 +42,7 @@ class AdaptiveFinetuningLoop:
         api_key = self._load_api_key(config.api_key_env)
         self.client = PioneerClient(base_url=config.api_base_url, api_key=api_key)
         self.random = random.Random(config.policy.random_seed)
-        self._training_dataset_ref: dict[str, str] | None = None
+        self._conversation_id: str | None = None
 
     @staticmethod
     def _load_api_key(env_var: str) -> str:
@@ -78,59 +83,87 @@ class AdaptiveFinetuningLoop:
             return self.random.choice(models)
         return max(models, key=lambda model: scored_models[model])
 
-    def _wait_for_dataset_ready(self, dataset_id: str, max_wait_seconds: int = 180) -> dict[str, Any]:
-        waited = 0
-        while waited <= max_wait_seconds:
-            datasets = self.client.list_datasets()
-            matches = [item for item in datasets if str(item.get("id")) == dataset_id]
-            if matches:
-                dataset = matches[0]
-                status = str(dataset.get("status", "")).lower()
-                if status == "ready":
-                    return dataset
-                if status == "failed":
-                    raise PioneerAPIError(
-                        f"Dataset {dataset_id} failed processing: {dataset.get('processing_error')}"
-                    )
-            time.sleep(2)
-            waited += 2
-        raise PioneerAPIError(f"Dataset {dataset_id} was not ready within {max_wait_seconds}s")
+    @staticmethod
+    def _extract_json_block(answer: str) -> dict[str, Any] | None:
+        code_blocks = re.findall(r"```(?:json)?\s*(\{.*?\})\s*```", answer, flags=re.DOTALL)
+        for block in code_blocks:
+            try:
+                parsed = json.loads(block)
+                if isinstance(parsed, dict):
+                    return parsed
+            except json.JSONDecodeError:
+                continue
+        return None
 
-    def _ensure_training_dataset_ref(self) -> dict[str, str]:
-        if self._training_dataset_ref:
-            return self._training_dataset_ref
+    def _extract_candidate_model_ids(self, answer: str) -> list[str]:
+        candidates: list[str] = []
 
-        source_path = self.config.finetune.training_file_path
-        if not source_path:
-            raise PioneerAPIError("No training file path configured.")
+        parsed = self._extract_json_block(answer)
+        if parsed:
+            for key in ("recommended_model_id", "model_id", "training_job_id", "selected_model_id"):
+                value = parsed.get(key)
+                if isinstance(value, str) and value.strip():
+                    candidates.append(value.strip())
 
-        dataset_name = self.config.finetune.dataset_name or (
-            f"{self.config.finetune.model_name_prefix}-dataset-{int(time.time())}"
+        uuid_hits = re.findall(
+            r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}",
+            answer,
         )
-        uploaded = self.client.upload_dataset(
-            self.project_root / source_path,
-            dataset_name=dataset_name,
-            dataset_type=self.config.finetune.dataset_type,
+        candidates.extend(uuid_hits)
+
+        base_hits = re.findall(r"base:[A-Za-z0-9._/-]+", answer)
+        candidates.extend(base_hits)
+
+        deduped: list[str] = []
+        seen: set[str] = set()
+        for item in candidates:
+            if item not in seen:
+                deduped.append(item)
+                seen.add(item)
+        return deduped
+
+    def _query_adaptive_agent(
+        self,
+        *,
+        base_model: str,
+        baseline_scores: dict[str, float],
+        target_score: float,
+        iteration: int,
+    ) -> tuple[str, int | None, str | None]:
+        score_lines = "\n".join(f"- {model}: {score:.4f}" for model, score in baseline_scores.items())
+        message = (
+            "You are the adaptive fine-tuning system. Given benchmark scores, choose the next model to "
+            "evaluate for coding performance improvement. Prefer a training job ID if you've created one. "
+            "Return JSON only in a markdown code block with key `recommended_model_id`.\n\n"
+            f"Iteration: {iteration}\n"
+            f"Current base model: {base_model}\n"
+            f"Target score: {target_score:.4f}\n"
+            f"Observed model scores:\n{score_lines}\n"
         )
-        dataset_id = str(uploaded.get("id", ""))
-        if not dataset_id:
-            raise PioneerAPIError(f"Dataset upload did not return ID: {uploaded}")
+        payload = self.client.adaptive_finetuning_chat(
+            message,
+            conversation_id=self._conversation_id,
+            filters={"model_id": base_model},
+        )
+        answer = str(payload.get("answer", ""))
+        self._conversation_id = payload.get("conversation_id")
+        tool_calls = payload.get("tool_calls_made")
+        tool_count = int(tool_calls) if isinstance(tool_calls, int) else None
+        return answer, tool_count, self._conversation_id
 
-        ready = self._wait_for_dataset_ready(dataset_id)
-        version = str(ready.get("version_number") or "1")
-        self._training_dataset_ref = {"name": str(ready["dataset_name"]), "version": version}
-        return self._training_dataset_ref
-
-    def _extract_training_loss(self, job_id: str) -> float | None:
-        checkpoints = self.client.get_finetune_checkpoints(job_id)
-        if not checkpoints:
-            return None
-        final = checkpoints[-1]
-        value = final.get("training_loss")
-        try:
-            return float(value) if value is not None else None
-        except (TypeError, ValueError):
-            return None
+    def _normalize_candidate_model_id(self, model_id: str) -> str | None:
+        if self.client.model_available_for_inference(model_id):
+            return model_id
+        probes = []
+        if not model_id.startswith("base:"):
+            probes.append(f"base:{model_id}")
+        probes.append(model_id.lower())
+        if not model_id.lower().startswith("base:"):
+            probes.append(f"base:{model_id.lower()}")
+        for probe in probes:
+            if self.client.model_available_for_inference(probe):
+                return probe
+        return None
 
     def _run_baselines(self, models: list[str]) -> tuple[dict[str, float], str, float]:
         scored_models: dict[str, float] = {}
@@ -171,21 +204,22 @@ class AdaptiveFinetuningLoop:
             for iteration in range(1, self.config.policy.max_iterations + 1):
                 base_model = self._pick_base_model(scored_models)
                 pre_score = scored_models[base_model]
-                dataset_ref = self._ensure_training_dataset_ref()
-                model_name = f"{self.config.finetune.model_name_prefix}-{int(time.time())}"
-                finetune_job = self.client.create_finetune_job(
-                    model_name=model_name,
-                    datasets=[dataset_ref],
-                    base_model=self.config.finetune.base_model,
-                    training_type=self.config.finetune.training_type,
-                    hyperparameters={**self.config.finetune.hyperparameters},
+                answer, tool_calls, conversation_id = self._query_adaptive_agent(
+                    base_model=base_model,
+                    baseline_scores=scored_models,
+                    target_score=self.config.policy.target_score,
+                    iteration=iteration,
                 )
-                job_id = str(finetune_job.get("id"))
-                completed = self.client.wait_for_finetune_job(job_id)
-                status = str(completed.get("status", "")).lower()
-                training_loss = self._extract_training_loss(job_id)
-                tuned_model = job_id
-
+                candidates = self._extract_candidate_model_ids(answer)
+                tuned_model = next(
+                    (
+                        normalized
+                        for model_id in candidates
+                        for normalized in [self._normalize_candidate_model_id(model_id)]
+                        if normalized
+                    ),
+                    base_model,
+                )
                 promoted_model = None
                 aggregate_score = pre_score
                 benchmark_results: list[dict[str, Any]] = []
@@ -202,6 +236,7 @@ class AdaptiveFinetuningLoop:
                             best_score = tuned_score
                             best_model = tuned_model
 
+                finetune_job_id = tuned_model if self.UUID_PATTERN.match(tuned_model) else None
                 history.append(
                     IterationRecord(
                         iteration=iteration,
@@ -209,15 +244,14 @@ class AdaptiveFinetuningLoop:
                         candidate_model=tuned_model,
                         benchmark_results=benchmark_results,
                         aggregate_score=aggregate_score,
-                        finetune_job_id=job_id,
+                        finetune_job_id=finetune_job_id,
                         promoted_model=promoted_model,
-                        training_status=status,
-                        training_loss=training_loss,
+                        agent_answer=answer,
+                        conversation_id=conversation_id,
+                        tool_calls_made=tool_calls,
                     )
                 )
 
-                if status in {"failed", "cancelled", "error"}:
-                    break
                 if promoted_model and aggregate_score >= self.config.policy.target_score:
                     break
 

@@ -55,6 +55,23 @@ class PioneerClient:
         payload = self._request("GET", "/v1/models")
         return payload.get("data", [])
 
+    def adaptive_finetuning_chat(
+        self,
+        message: str,
+        *,
+        conversation_id: str | None = None,
+        history: list[dict[str, str]] | None = None,
+        filters: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {"message": message}
+        if conversation_id:
+            body["conversation_id"] = conversation_id
+        if history:
+            body["history"] = history
+        if filters:
+            body["filters"] = filters
+        return self._request("POST", "/adaptive-finetuning/chat", json_body=body)
+
     def model_available_for_inference(self, model_id: str) -> bool:
         if self._UUID_PATTERN.match(model_id):
             # Decoder fine-tunes are inferenced through /inference by training job ID.

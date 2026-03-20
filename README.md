@@ -20,8 +20,8 @@ This repo is intentionally config-driven so you can iterate quickly on:
 - Weighted aggregation across benchmarks
 - Adaptive loop:
   - establish inference baselines first (seed + candidates)
-  - launch Felix fine-tune jobs when below target
-  - track training status/loss per iteration
+  - ask Pioneer adaptive agent (`/adaptive-finetuning/chat`) for next model recommendation
+  - evaluate the recommended model and promote only when score improves
 - JSON history + summary artifacts in `outputs/`
 
 ---
@@ -155,7 +155,10 @@ An example config is provided at `configs/experiment_python_functions.yaml`.
   - `/v1/chat/completions` for standard inference model IDs
   - `/inference` for `base:*` decoder IDs
 - Tuned decoder inference uses `/inference` with the **training job UUID** as `model_id`.
-- Fine-tuning uses Felix endpoints (`/felix/datasets/upload`, `/felix/training-jobs`).
+- Adaptation orchestration uses Pioneer adaptive endpoint (`/adaptive-finetuning/chat`).
+- Decoder inference evaluation uses `/inference` (training job UUIDs and `base:*` IDs).
+- Fine-tuning internals are delegated to Pioneer’s adaptive system.
+- This repo no longer triggers fine-tune jobs directly inside the loop; it delegates model recommendation to Pioneer adaptive chat and only performs benchmark evaluation locally.
 - If your Pioneer tenant uses custom endpoint conventions, adjust `src/pioneer_adaptive/pioneer_client.py`.
 - Adaptive policy knobs live under `policy` in `configs/experiment.yaml`.
 
