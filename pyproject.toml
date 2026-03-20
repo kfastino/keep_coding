@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pioneer-adaptive-finetuning"
+version = "0.1.0"
+description = "Adaptive finetuning experiment harness for Pioneer coder models."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Pioneer Adaptive Experiments" }]
+dependencies = [
+  "pydantic>=2.11.0",
+  "PyYAML>=6.0.2",
+  "requests>=2.32.0",
+  "tenacity>=9.1.0",
+  "typer>=0.16.0",
+  "rich>=14.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.4.0"]
+
+[project.scripts]
+pioneer-adaptive = "pioneer_adaptive.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pioneer_adaptive"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

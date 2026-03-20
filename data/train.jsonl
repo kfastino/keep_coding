@@ -1,0 +1,2 @@
+{"messages":[{"role":"system","content":"You are a concise coding assistant."},{"role":"user","content":"Write a Python function to reverse a string."},{"role":"assistant","content":"def reverse_string(s: str) -> str:\n    return s[::-1]"}]}
+{"messages":[{"role":"system","content":"You are a concise coding assistant."},{"role":"user","content":"Implement Fibonacci iteratively in Python."},{"role":"assistant","content":"def fibonacci(n: int) -> int:\n    if n < 2:\n        return n\n    a, b = 0, 1\n    for _ in range(2, n + 1):\n        a, b = b, a + b\n    return b"}]}

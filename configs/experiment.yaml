@@ -1,0 +1,58 @@
+api_base_url: "https://api.pioneer.ai/v1"
+api_key_env: "PIONEER_API_KEY"
+
+# Starting point model and optional existing candidates to evaluate each cycle.
+seed_model: "pioneer/small-coder-base"
+candidate_models:
+  - "pioneer/small-coder-instruct"
+
+output_dir: "outputs"
+
+benchmarks:
+  - name: "livecodebench"
+    enabled: true
+    weight: 0.6
+    cwd: "."
+    command:
+      - "python3"
+      - "scripts/run_livecodebench_stub.py"
+      - "--model-id"
+      - "{model_id}"
+      - "--out"
+      - "outputs/livecodebench.json"
+    parser:
+      mode: "json_file"
+      json_path: "outputs/livecodebench.json"
+      key_path: "metrics.pass_at_1"
+
+  - name: "aider_editing"
+    enabled: true
+    weight: 0.4
+    cwd: "."
+    command:
+      - "python3"
+      - "scripts/run_aider_benchmark_stub.py"
+      - "--model-id"
+      - "{model_id}"
+      - "--out"
+      - "outputs/aider.json"
+    parser:
+      mode: "json_file"
+      json_path: "outputs/aider.json"
+      key_path: "metrics.success_rate"
+
+finetune:
+  # Prefer training_file_id once your data is already uploaded.
+  training_file_path: "data/train.jsonl"
+  validation_file_path: "data/valid.jsonl"
+  suffix: "adaptive-coder"
+  hyperparameters:
+    n_epochs: 2
+
+policy:
+  max_iterations: 4
+  target_score: 0.70
+  exploration_rate: 0.25
+  minimum_gain: 0.01
+  random_seed: 11
+
