@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,10 @@ class PioneerAPIError(RuntimeError):
 
 
 class PioneerClient:
+    _UUID_PATTERN = re.compile(
+        r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+    )
+
     def __init__(self, base_url: str, api_key: str, timeout: int = 90) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
@@ -51,6 +56,9 @@ class PioneerClient:
         return payload.get("data", [])
 
     def model_available_for_inference(self, model_id: str) -> bool:
+        if self._UUID_PATTERN.match(model_id):
+            # Decoder fine-tunes are inferenced through /inference by training job ID.
+            return True
         models = self.list_models()
         known = {str(model.get("id")) for model in models if model.get("id")}
         return model_id in known
@@ -63,6 +71,24 @@ class PioneerClient:
         temperature: float = 0.2,
         max_tokens: int = 512,
     ) -> str:
+        if self._UUID_PATTERN.match(model_id):
+            payload = self._request(
+                "POST",
+                "/inference",
+                json_body={
+                    "model_id": model_id,
+                    "task": "generate",
+                    "messages": messages,
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                    "store": False,
+                },
+            )
+            content = payload.get("completion")
+            if not isinstance(content, str):
+                raise PioneerAPIError(f"Invalid /inference completion payload: {payload}")
+            return content
+
         payload = self._request(
             "POST",
             "/v1/chat/completions",

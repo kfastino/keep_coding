@@ -184,7 +184,7 @@ class AdaptiveFinetuningLoop:
                 completed = self.client.wait_for_finetune_job(job_id)
                 status = str(completed.get("status", "")).lower()
                 training_loss = self._extract_training_loss(job_id)
-                tuned_model = str(completed.get("model_name", model_name))
+                tuned_model = job_id
 
                 promoted_model = None
                 aggregate_score = pre_score
