@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any, Literal
 
@@ -79,8 +80,21 @@ class ExperimentConfig(BaseModel):
     finetune: FinetuneConfig
     policy: AdaptivePolicyConfig = Field(default_factory=AdaptivePolicyConfig)
 
+    @model_validator(mode="before")
+    @classmethod
+    def apply_env_overrides(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        api_base_url_override = os.getenv("PIONEER_API_BASE_URL")
+        if api_base_url_override and api_base_url_override.strip():
+            merged = dict(data)
+            merged["api_base_url"] = api_base_url_override.strip()
+            return merged
+        return data
+
     @model_validator(mode="after")
     def validate_benchmarks(self) -> "ExperimentConfig":
+        self.api_base_url = self.api_base_url.rstrip("/")
         enabled = [b for b in self.benchmarks if b.enabled]
         if not enabled:
             raise ValueError("At least one benchmark must be enabled")
