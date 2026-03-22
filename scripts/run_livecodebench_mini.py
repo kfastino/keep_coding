@@ -47,6 +47,7 @@ def main() -> None:
     key = os.getenv("PIONEER_API_KEY")
     if not key:
         raise PioneerAPIError("PIONEER_API_KEY is not set")
+    base_url = os.getenv("PIONEER_API_BASE_URL", "https://api.pioneer.ai").rstrip("/")
 
     project_root = Path(__file__).resolve().parents[1]
     lcb_root = project_root / "benchmarks" / "LiveCodeBench"
@@ -60,7 +61,7 @@ def main() -> None:
     dataset = load_code_generation_dataset(args.release_version)
     dataset = sorted(dataset, key=lambda item: item.question_id)[: args.limit]
 
-    client = PioneerClient(base_url="https://api.pioneer.ai", api_key=key, timeout=180)
+    client = PioneerClient(base_url=base_url, api_key=key, timeout=180)
 
     generated_codes: list[list[str]] = []
     per_problem: list[dict[str, object]] = []

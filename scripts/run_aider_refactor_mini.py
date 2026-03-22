@@ -95,12 +95,13 @@ def main() -> None:
     key = os.getenv("PIONEER_API_KEY")
     if not key:
         raise PioneerAPIError("PIONEER_API_KEY is not set")
+    base_url = os.getenv("PIONEER_API_BASE_URL", "https://api.pioneer.ai").rstrip("/")
 
     project_root = Path(__file__).resolve().parents[1]
     bench_root = project_root / "benchmarks" / "refactor-benchmark" / "refactor-benchmark"
     task_dirs = sorted([path for path in bench_root.iterdir() if path.is_dir()])[: args.limit]
 
-    client = PioneerClient(base_url="https://api.pioneer.ai", api_key=key, timeout=180)
+    client = PioneerClient(base_url=base_url, api_key=key, timeout=180)
     details: list[dict[str, Any]] = []
     success = 0
 

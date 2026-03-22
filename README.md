@@ -42,6 +42,12 @@ pip install -e ".[dev]"
 export PIONEER_API_KEY="your_key_here"
 ```
 
+Optional: override API base URL (for local backend testing):
+
+```bash
+export PIONEER_API_BASE_URL="http://127.0.0.1:8000"
+```
+
 > Keep keys in environment variables; do not commit them into files.
 
 ### 3) Validate config
@@ -159,6 +165,7 @@ An example config is provided at `configs/experiment_python_functions.yaml`.
 - Decoder inference evaluation uses `/inference` (training job UUIDs and `base:*` IDs).
 - Fine-tuning internals are delegated to Pioneer’s adaptive system.
 - This repo no longer triggers fine-tune jobs directly inside the loop; it delegates model recommendation to Pioneer adaptive chat and only performs benchmark evaluation locally.
+- Benchmark scripts honor `PIONEER_API_BASE_URL` (default: `https://api.pioneer.ai`).
 - If your Pioneer tenant uses custom endpoint conventions, adjust `src/pioneer_adaptive/pioneer_client.py`.
 - Adaptive policy knobs live under `policy` in `configs/experiment.yaml`.
 
