@@ -145,8 +145,9 @@ def main() -> None:
     key = os.getenv("PIONEER_API_KEY")
     if not key:
         raise PioneerAPIError("PIONEER_API_KEY is not set")
+    base_url = os.getenv("PIONEER_API_BASE_URL", "https://api.pioneer.ai").rstrip("/")
 
-    client = PioneerClient(base_url="https://api.pioneer.ai", api_key=key, timeout=180)
+    client = PioneerClient(base_url=base_url, api_key=key, timeout=180)
 
     repeats: list[dict[str, Any]] = []
     for rep in range(1, args.repeat + 1):
