@@ -20,8 +20,8 @@ This repo is intentionally config-driven so you can iterate quickly on:
 - Weighted aggregation across benchmarks
 - Adaptive loop:
   - establish inference baselines first (seed + candidates)
-  - launch Felix fine-tune jobs when below target
-  - track training status/loss per iteration
+  - ask Pioneer adaptive agent (`/adaptive-finetuning/chat`) for next model recommendation
+  - evaluate the recommended model and promote only when score improves
 - JSON history + summary artifacts in `outputs/`
 
 ---
@@ -157,8 +157,21 @@ An example config is provided at `configs/experiment_python_functions.yaml`.
 
 ## Notes
 
-- Baseline inference uses OpenAI-compatible Pioneer endpoint (`/v1/chat/completions`).
-- Fine-tuning uses Felix endpoints (`/felix/datasets/upload`, `/felix/training-jobs`).
+- Baseline inference uses:
+  - `/v1/chat/completions` for standard inference model IDs
+  - `/inference` for `base:*` decoder IDs
+- Tuned decoder inference uses `/inference` with the **training job UUID** as `model_id`.
+- Adaptation orchestration uses Pioneer adaptive endpoint (`/adaptive-finetuning/chat`).
+- Decoder inference evaluation uses `/inference` (training job UUIDs and `base:*` IDs).
+- Fine-tuning internals are delegated to Pioneer’s adaptive system.
+- This repo no longer triggers fine-tune jobs directly inside the loop; it delegates model recommendation to Pioneer adaptive chat and only performs benchmark evaluation locally.
 - Benchmark scripts honor `PIONEER_API_BASE_URL` (default: `https://api.pioneer.ai`).
 - If your Pioneer tenant uses custom endpoint conventions, adjust `src/pioneer_adaptive/pioneer_client.py`.
 - Adaptive policy knobs live under `policy` in `configs/experiment.yaml`.
+
+## Latest experiment learnings
+
+- Mini LiveCodeBench/Aider runs are highly sensitive to long `<think>` traces and token budget.
+- Session instability (`Too many active sessions`) can impact both inference and training jobs.
+- On a deterministic executable benchmark (`python_functions_20`), we observed small but repeatable tuned improvements in some runs.
+- Committed experiment artifacts are stored in `results/`.

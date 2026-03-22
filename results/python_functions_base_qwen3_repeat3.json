@@ -1,0 +1,579 @@
+{
+  "benchmark": "python_functions_20",
+  "model_id": "base:Qwen/Qwen3-8B",
+  "task_count": 20,
+  "repeat": 3,
+  "metrics": {
+    "functional_pass_rate_avg": 0.7833333333333333,
+    "functional_pass_rate_min": 0.75,
+    "functional_pass_rate_max": 0.85,
+    "runnable_rate_avg": 0.7999999999999999,
+    "fenced_rate_avg": 0.7833333333333333
+  },
+  "runs": [
+    {
+      "repeat": 1,
+      "functional_pass": 15,
+      "runnable_count": 15,
+      "fenced_count": 15,
+      "details": [
+        {
+          "task": "double",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 43
+        },
+        {
+          "task": "triple",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 43
+        },
+        {
+          "task": "square",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 43
+        },
+        {
+          "task": "cube",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 42
+        },
+        {
+          "task": "is_even",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 50
+        },
+        {
+          "task": "is_odd",
+          "fenced": false,
+          "runnable": false,
+          "passed": false,
+          "error": null,
+          "failure": "exec_error:SyntaxError",
+          "code_chars": 776
+        },
+        {
+          "task": "reverse_string",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 53
+        },
+        {
+          "task": "is_palindrome",
+          "fenced": false,
+          "runnable": false,
+          "passed": false,
+          "error": null,
+          "failure": "exec_error:SyntaxError",
+          "code_chars": 2238
+        },
+        {
+          "task": "sum_list",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 58
+        },
+        {
+          "task": "max_in_list",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 61
+        },
+        {
+          "task": "min_in_list",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 61
+        },
+        {
+          "task": "count_vowels",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 179
+        },
+        {
+          "task": "factorial",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 112
+        },
+        {
+          "task": "fib",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 172
+        },
+        {
+          "task": "gcd",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 86
+        },
+        {
+          "task": "lcm",
+          "fenced": false,
+          "runnable": false,
+          "passed": false,
+          "error": null,
+          "failure": "exec_error:SyntaxError",
+          "code_chars": 1346
+        },
+        {
+          "task": "clamp",
+          "fenced": false,
+          "runnable": false,
+          "passed": false,
+          "error": null,
+          "failure": "exec_error:SyntaxError",
+          "code_chars": 237
+        },
+        {
+          "task": "abs_diff",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 58
+        },
+        {
+          "task": "starts_with_vowel",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 154
+        },
+        {
+          "task": "unique_sorted",
+          "fenced": false,
+          "runnable": false,
+          "passed": false,
+          "error": null,
+          "failure": "exec_error:SyntaxError",
+          "code_chars": 358
+        }
+      ]
+    },
+    {
+      "repeat": 2,
+      "functional_pass": 15,
+      "runnable_count": 15,
+      "fenced_count": 15,
+      "details": [
+        {
+          "task": "double",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 43
+        },
+        {
+          "task": "triple",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 43
+        },
+        {
+          "task": "square",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 43
+        },
+        {
+          "task": "cube",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 42
+        },
+        {
+          "task": "is_even",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 50
+        },
+        {
+          "task": "is_odd",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 49
+        },
+        {
+          "task": "reverse_string",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 53
+        },
+        {
+          "task": "is_palindrome",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 58
+        },
+        {
+          "task": "sum_list",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 110
+        },
+        {
+          "task": "max_in_list",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 61
+        },
+        {
+          "task": "min_in_list",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 61
+        },
+        {
+          "task": "count_vowels",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 179
+        },
+        {
+          "task": "factorial",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 112
+        },
+        {
+          "task": "fib",
+          "fenced": false,
+          "runnable": false,
+          "passed": false,
+          "error": null,
+          "failure": "exec_error:SyntaxError",
+          "code_chars": 1105
+        },
+        {
+          "task": "gcd",
+          "fenced": false,
+          "runnable": false,
+          "passed": false,
+          "error": null,
+          "failure": "exec_error:SyntaxError",
+          "code_chars": 269
+        },
+        {
+          "task": "lcm",
+          "fenced": false,
+          "runnable": false,
+          "passed": false,
+          "error": null,
+          "failure": "exec_error:SyntaxError",
+          "code_chars": 1798
+        },
+        {
+          "task": "clamp",
+          "fenced": false,
+          "runnable": false,
+          "passed": false,
+          "error": null,
+          "failure": "exec_error:SyntaxError",
+          "code_chars": 560
+        },
+        {
+          "task": "abs_diff",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 58
+        },
+        {
+          "task": "starts_with_vowel",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 154
+        },
+        {
+          "task": "unique_sorted",
+          "fenced": false,
+          "runnable": false,
+          "passed": false,
+          "error": null,
+          "failure": "exec_error:SyntaxError",
+          "code_chars": 46
+        }
+      ]
+    },
+    {
+      "repeat": 3,
+      "functional_pass": 17,
+      "runnable_count": 18,
+      "fenced_count": 17,
+      "details": [
+        {
+          "task": "double",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 43
+        },
+        {
+          "task": "triple",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 43
+        },
+        {
+          "task": "square",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 43
+        },
+        {
+          "task": "cube",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 42
+        },
+        {
+          "task": "is_even",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 50
+        },
+        {
+          "task": "is_odd",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 49
+        },
+        {
+          "task": "reverse_string",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 53
+        },
+        {
+          "task": "is_palindrome",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 58
+        },
+        {
+          "task": "sum_list",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 58
+        },
+        {
+          "task": "max_in_list",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 61
+        },
+        {
+          "task": "min_in_list",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 61
+        },
+        {
+          "task": "count_vowels",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 179
+        },
+        {
+          "task": "factorial",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 112
+        },
+        {
+          "task": "fib",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 172
+        },
+        {
+          "task": "gcd",
+          "fenced": false,
+          "runnable": false,
+          "passed": false,
+          "error": null,
+          "failure": "exec_error:SyntaxError",
+          "code_chars": 1248
+        },
+        {
+          "task": "lcm",
+          "fenced": false,
+          "runnable": true,
+          "passed": false,
+          "error": null,
+          "failure": "expected=12, got=None",
+          "code_chars": 160
+        },
+        {
+          "task": "clamp",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 198
+        },
+        {
+          "task": "abs_diff",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 58
+        },
+        {
+          "task": "starts_with_vowel",
+          "fenced": true,
+          "runnable": true,
+          "passed": true,
+          "error": null,
+          "failure": null,
+          "code_chars": 126
+        },
+        {
+          "task": "unique_sorted",
+          "fenced": false,
+          "runnable": false,
+          "passed": false,
+          "error": null,
+          "failure": "exec_error:SyntaxError",
+          "code_chars": 5376
+        }
+      ]
+    }
+  ]
+}

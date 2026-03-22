@@ -1,0 +1,24 @@
+{
+  "benchmark": "python_functions_20",
+  "base_model": "base:Qwen/Qwen3-8B",
+  "tuned_model": "b3bee275-10f8-47ea-a6a8-34b62c95f8ac",
+  "base_functional_avg": 0.7666666666666666,
+  "tuned_functional_avg": 0.7999999999999999,
+  "delta_functional": 0.033333333333333326,
+  "base_repeats": [
+    16,
+    15,
+    15
+  ],
+  "tuned_repeats": [
+    16,
+    17,
+    15
+  ],
+  "base_runnable_avg": 0.7666666666666666,
+  "tuned_runnable_avg": 0.7999999999999999,
+  "delta_runnable": 0.033333333333333326,
+  "base_fenced_avg": 0.7666666666666666,
+  "tuned_fenced_avg": 0.7999999999999999,
+  "delta_fenced": 0.033333333333333326
+}
