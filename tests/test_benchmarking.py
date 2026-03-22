@@ -1,12 +1,19 @@
 from __future__ import annotations
 
 import json
+import stat
 from pathlib import Path
 
 import pytest
 
-from pioneer_adaptive.benchmarking import _dot_lookup, _parse_score, weighted_score
+from pioneer_adaptive.benchmarking import (
+    _dot_lookup,
+    _parse_score,
+    run_benchmark,
+    weighted_score,
+)
 from pioneer_adaptive.config import ScoreParserConfig
+from pioneer_adaptive.config import BenchmarkConfig
 
 
 def test_dot_lookup_nested_path() -> None:
@@ -36,4 +43,50 @@ def test_weighted_score() -> None:
         {"a": 0.75, "b": 0.25},
     )
     assert score == pytest.approx(0.7)
+
+
+def test_run_benchmark_rewrites_out_path_with_run_output_dir(tmp_path: Path) -> None:
+    script = tmp_path / "emit.py"
+    script.write_text(
+        "\n".join(
+            [
+                "import argparse",
+                "import json",
+                "from pathlib import Path",
+                "p = argparse.ArgumentParser()",
+                "p.add_argument('--out', required=True)",
+                "args = p.parse_args()",
+                "out = Path(args.out)",
+                "out.parent.mkdir(parents=True, exist_ok=True)",
+                "out.write_text(json.dumps({'metrics': {'score': 0.5}}), encoding='utf-8')",
+                "print(json.dumps({'ok': True}))",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    mode = script.stat().st_mode
+    script.chmod(mode | stat.S_IXUSR)
+
+    benchmark = BenchmarkConfig.model_validate(
+        {
+            "name": "emit",
+            "cwd": str(tmp_path),
+            "command": ["python3", str(script), "--out", "outputs/sample.json"],
+            "parser": {
+                "mode": "json_file",
+                "json_path": "outputs/sample.json",
+                "key_path": "metrics.score",
+            },
+        }
+    )
+
+    result = run_benchmark(
+        benchmark,
+        model_id="model-a",
+        project_root=tmp_path,
+        template_vars={"run_output_dir": "outputs/run-123"},
+    )
+
+    assert result.score == 0.5
+    assert (tmp_path / "outputs" / "run-123" / "sample.json").exists()
 

@@ -26,6 +26,21 @@ class BenchmarkResult:
         return asdict(self)
 
 
+def _apply_template(value: str, template_vars: dict[str, str]) -> str:
+    rendered = value
+    for key, replacement in template_vars.items():
+        rendered = rendered.replace(f"{{{key}}}", replacement)
+    return rendered
+
+
+def _rewrite_output_path(path_value: str, run_output_dir: str | None) -> str:
+    if not run_output_dir:
+        return path_value
+    if Path(path_value).is_absolute():
+        return path_value
+    return str(Path(run_output_dir) / Path(path_value).name)
+
+
 def _dot_lookup(payload: dict[str, Any], key_path: str) -> Any:
     current: Any = payload
     for key in key_path.split("."):
@@ -75,19 +90,40 @@ def _parse_score(
 
 
 def run_benchmark(
-    benchmark: BenchmarkConfig, *, model_id: str, project_root: Path
+    benchmark: BenchmarkConfig,
+    *,
+    model_id: str,
+    project_root: Path,
+    template_vars: dict[str, str] | None = None,
 ) -> BenchmarkResult:
-    formatted_command = [part.replace("{model_id}", model_id) for part in benchmark.command]
-    benchmark_cwd = Path(benchmark.cwd)
+    render_vars = {"model_id": model_id, **(template_vars or {})}
+
+    formatted_command = [_apply_template(part, render_vars) for part in benchmark.command]
+    run_output_dir = render_vars.get("run_output_dir")
+    configured_out_path: str | None = None
+    for idx, part in enumerate(formatted_command[:-1]):
+        if part == "--out":
+            configured_out_path = formatted_command[idx + 1]
+            formatted_command[idx + 1] = _rewrite_output_path(formatted_command[idx + 1], run_output_dir)
+            break
+
+    benchmark_cwd = Path(_apply_template(benchmark.cwd, render_vars))
     if not benchmark_cwd.is_absolute():
         benchmark_cwd = project_root / benchmark_cwd
 
     env = {**benchmark.env}
-    env = {key: value.replace("{model_id}", model_id) for key, value in env.items()}
+    env = {key: _apply_template(value, render_vars) for key, value in env.items()}
 
     merged_env = None
     if env:
         merged_env = {**os.environ, **env}
+
+    parser = benchmark.parser
+    if parser.mode == "json_file" and parser.json_path:
+        resolved_json_path = _apply_template(parser.json_path, render_vars)
+        if configured_out_path and resolved_json_path == configured_out_path:
+            resolved_json_path = _rewrite_output_path(resolved_json_path, run_output_dir)
+        parser = parser.model_copy(update={"json_path": resolved_json_path})
 
     start = time.perf_counter()
     completed = subprocess.run(
@@ -107,7 +143,7 @@ def run_benchmark(
         )
 
     score = _parse_score(
-        benchmark.parser,
+        parser,
         stdout=completed.stdout,
         stderr=completed.stderr,
         benchmark_cwd=benchmark_cwd,

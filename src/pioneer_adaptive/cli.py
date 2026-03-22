@@ -47,10 +47,27 @@ def list_models(path: str = typer.Argument("configs/experiment.yaml")) -> None:
 def run_benchmarks(
     model_id: str = typer.Argument(..., help="Model ID to evaluate"),
     path: str = typer.Argument("configs/experiment.yaml"),
+    run_id: str | None = typer.Option(
+        None,
+        "--run-id",
+        help="Optional run identifier for isolating benchmark output files.",
+    ),
 ) -> None:
     config, project_root = _load(path)
     enabled = [benchmark for benchmark in config.benchmarks if benchmark.enabled]
-    results = [run_benchmark(benchmark, model_id=model_id, project_root=project_root) for benchmark in enabled]
+    template_vars: dict[str, str] = {}
+    if run_id:
+        template_vars["run_id"] = run_id
+        template_vars["run_output_dir"] = str(Path(config.output_dir) / run_id)
+    results = [
+        run_benchmark(
+            benchmark,
+            model_id=model_id,
+            project_root=project_root,
+            template_vars=template_vars or None,
+        )
+        for benchmark in enabled
+    ]
     weights = {benchmark.name: benchmark.weight for benchmark in enabled}
     aggregate = weighted_score(results, weights)
     output = {
@@ -66,8 +83,10 @@ def run_cycle(path: str = typer.Argument("configs/experiment.yaml")) -> None:
     config, project_root = _load(path)
     loop = AdaptiveFinetuningLoop(config=config, project_root=project_root)
     history = loop.run()
+    output_dir = loop.output_dir.relative_to(project_root)
     print(
-        f"[green]Adaptive cycle complete[/green]: {len(history)} iteration(s), output in {config.output_dir}"
+        f"[green]Adaptive cycle complete[/green]: {len(history)} iteration(s), "
+        f"run_id={loop.run_id}, output in {output_dir}"
     )
 
 

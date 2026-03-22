@@ -59,7 +59,7 @@ pioneer-adaptive validate-config configs/experiment.yaml
 ### 4) Run benchmark-only evaluation
 
 ```bash
-pioneer-adaptive run-benchmarks "llama-3.1-8b" configs/experiment.yaml
+pioneer-adaptive run-benchmarks "llama-3.1-8b" configs/experiment.yaml --run-id "smoke-001"
 ```
 
 ### 5) Run adaptive finetuning cycle
@@ -70,8 +70,11 @@ pioneer-adaptive run-cycle configs/experiment.yaml
 
 Results are written to:
 
-- `outputs/history.json`
-- `outputs/summary.json`
+- `outputs/<run_id>/history.json`
+- `outputs/<run_id>/summary.json`
+- `outputs/<run_id>/baselines.json`
+
+The CLI prints the generated `run_id` at the end of each cycle.
 
 ---
 

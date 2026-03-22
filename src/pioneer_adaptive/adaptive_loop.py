@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import random
 import re
+from datetime import datetime, timezone
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -34,7 +35,8 @@ class AdaptiveFinetuningLoop:
     def __init__(self, config: ExperimentConfig, project_root: Path) -> None:
         self.config = config
         self.project_root = project_root
-        self.output_dir = project_root / config.output_dir
+        self.run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        self.output_dir = project_root / config.output_dir / self.run_id
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.history_file = self.output_dir / "history.json"
         self.baselines_file = self.output_dir / "baselines.json"
@@ -58,7 +60,15 @@ class AdaptiveFinetuningLoop:
     def _evaluate(self, model_id: str) -> tuple[list[BenchmarkResult], float]:
         enabled = [benchmark for benchmark in self.config.benchmarks if benchmark.enabled]
         results = [
-            run_benchmark(benchmark, model_id=model_id, project_root=self.project_root)
+            run_benchmark(
+                benchmark,
+                model_id=model_id,
+                project_root=self.project_root,
+                template_vars={
+                    "run_id": self.run_id,
+                    "run_output_dir": str(self.output_dir.relative_to(self.project_root)),
+                },
+            )
             for benchmark in enabled
         ]
         weights = {benchmark.name: benchmark.weight for benchmark in enabled}
@@ -264,6 +274,8 @@ class AdaptiveFinetuningLoop:
                     "best_score": best_score,
                     "baseline_models": baseline_models,
                     "iterations_run": len(history),
+                    "run_id": self.run_id,
+                    "output_dir": str(self.output_dir.relative_to(self.project_root)),
                 },
                 indent=2,
             ),
