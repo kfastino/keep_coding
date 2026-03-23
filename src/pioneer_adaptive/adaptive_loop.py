@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import random
+import re
 from datetime import datetime, timezone
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -28,6 +29,12 @@ class IterationRecord:
 
 
 class AdaptiveFinetuningLoop:
+    UUID_REGEX = (
+        r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-"
+        r"[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}"
+    )
+    UUID_PATTERN = re.compile(f"^{UUID_REGEX}$")
+
     def __init__(self, config: ExperimentConfig, project_root: Path) -> None:
         self.config = config
         self.project_root = project_root
@@ -88,6 +95,82 @@ class AdaptiveFinetuningLoop:
         if self.random.random() < self.config.policy.exploration_rate:
             return self.random.choice(models)
         return max(models, key=lambda model: scored_models[model])
+
+    @staticmethod
+    def _normalize_string(value: Any) -> str | None:
+        if not isinstance(value, str):
+            return None
+        stripped = value.strip()
+        return stripped or None
+
+    @staticmethod
+    def _extract_json_block(answer: str) -> dict[str, Any] | None:
+        code_blocks = re.findall(r"```(?:json)?\s*(\{.*?\})\s*```", answer, flags=re.DOTALL)
+        for block in code_blocks:
+            try:
+                parsed = json.loads(block)
+                if isinstance(parsed, dict):
+                    return parsed
+            except json.JSONDecodeError:
+                continue
+        return None
+
+    @classmethod
+    def _first_uuid(cls, text: str) -> str | None:
+        match = re.search(cls.UUID_REGEX, text)
+        return match.group(0) if match else None
+
+    @classmethod
+    def _resolve_agent_decision(
+        cls,
+        *,
+        payload: dict[str, Any],
+        base_model: str,
+    ) -> tuple[str, str | None]:
+        answer = str(payload.get("answer", ""))
+        parsed_answer = cls._extract_json_block(answer) or {}
+        sources: list[dict[str, Any]] = [payload, parsed_answer]
+
+        recommended_model_id: str | None = None
+        for source in sources:
+            for key in ("recommended_model_id", "model_id", "selected_model_id"):
+                value = cls._normalize_string(source.get(key))
+                if value:
+                    recommended_model_id = value
+                    break
+            if recommended_model_id:
+                break
+
+        training_job_id: str | None = None
+        for source in sources:
+            for key in ("training_job_id", "finetune_job_id", "job_id"):
+                value = cls._normalize_string(source.get(key))
+                if value:
+                    training_job_id = value
+                    break
+            if training_job_id:
+                break
+
+        if training_job_id and not cls.UUID_PATTERN.match(training_job_id):
+            training_job_id = cls._first_uuid(training_job_id)
+
+        if not training_job_id:
+            training_job_id = cls._first_uuid(answer)
+
+        if (
+            not training_job_id
+            and recommended_model_id
+            and cls.UUID_PATTERN.match(recommended_model_id)
+        ):
+            training_job_id = recommended_model_id
+
+        if not recommended_model_id:
+            base_match = re.search(r"base:[A-Za-z0-9._/-]+", answer)
+            if base_match:
+                recommended_model_id = base_match.group(0)
+
+        resolved_model = recommended_model_id or training_job_id or base_model
+        return resolved_model, training_job_id
 
     def _query_adaptive_agent(
         self,
@@ -186,13 +269,16 @@ class AdaptiveFinetuningLoop:
                     if adaptive_payload.get("conversation_id") is not None
                     else self._conversation_id
                 )
-                recommended_model_id_raw = adaptive_payload.get("recommended_model_id")
-                recommended_model_id = (
-                    recommended_model_id_raw.strip()
-                    if isinstance(recommended_model_id_raw, str) and recommended_model_id_raw.strip()
-                    else base_model
+                recommended_model_id, finetune_job_id = self._resolve_agent_decision(
+                    payload=adaptive_payload,
+                    base_model=base_model,
                 )
-                tuned_model = self._normalize_candidate_model_id(recommended_model_id) or base_model
+                decision_target = finetune_job_id or recommended_model_id
+                tuned_model = self._normalize_candidate_model_id(decision_target)
+                if tuned_model is None and decision_target != recommended_model_id:
+                    tuned_model = self._normalize_candidate_model_id(recommended_model_id)
+                if tuned_model is None:
+                    tuned_model = base_model
                 promoted_model = None
                 aggregate_score = pre_score
                 benchmark_results: list[dict[str, Any]] = []
@@ -209,12 +295,6 @@ class AdaptiveFinetuningLoop:
                             best_score = tuned_score
                             best_model = tuned_model
 
-                finetune_job_id_raw = adaptive_payload.get("training_job_id")
-                finetune_job_id = (
-                    finetune_job_id_raw.strip()
-                    if isinstance(finetune_job_id_raw, str) and finetune_job_id_raw.strip()
-                    else None
-                )
                 history.append(
                     IterationRecord(
                         iteration=iteration,
