@@ -20,8 +20,9 @@ This repo is intentionally config-driven so you can iterate quickly on:
 - Weighted aggregation across benchmarks
 - Adaptive loop:
   - establish inference baselines first (seed + candidates)
-  - ask Pioneer adaptive agent (`/adaptive-finetuning/chat`) for next model recommendation
-  - evaluate the recommended model and promote only when score improves
+  - ask Pioneer adaptive agent (`/adaptive-finetuning/chat`) for the next action/model
+  - persist the full adaptive API response for each iteration (endpoint-first auditing)
+  - evaluate the API-recommended model and promote only when score improves
 - JSON history + summary artifacts in `outputs/`
 
 ---
@@ -164,10 +165,10 @@ An example config is provided at `configs/experiment_python_functions.yaml`.
   - `/v1/chat/completions` for standard inference model IDs
   - `/inference` for `base:*` decoder IDs
 - Tuned decoder inference uses `/inference` with the **training job UUID** as `model_id`.
-- Adaptation orchestration uses Pioneer adaptive endpoint (`/adaptive-finetuning/chat`).
+- Adaptation orchestration uses Pioneer adaptive endpoint (`/adaptive-finetuning/chat`) as the source of truth.
 - Decoder inference evaluation uses `/inference` (training job UUIDs and `base:*` IDs).
 - Fine-tuning internals are delegated to Pioneer’s adaptive system.
-- This repo no longer triggers fine-tune jobs directly inside the loop; it delegates model recommendation to Pioneer adaptive chat and only performs benchmark evaluation locally.
+- This repo no longer triggers fine-tune jobs directly inside the loop; it delegates decisions to Pioneer adaptive chat and only performs benchmark evaluation locally.
 - Benchmark scripts honor `PIONEER_API_BASE_URL` (default: `https://api.pioneer.ai`).
 - If your Pioneer tenant uses custom endpoint conventions, adjust `src/pioneer_adaptive/pioneer_client.py`.
 - Adaptive policy knobs live under `policy` in `configs/experiment.yaml`.

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import random
-import re
 from datetime import datetime, timezone
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -25,13 +24,10 @@ class IterationRecord:
     agent_answer: str | None = None
     conversation_id: str | None = None
     tool_calls_made: int | None = None
+    adaptive_response: dict[str, Any] | None = None
 
 
 class AdaptiveFinetuningLoop:
-    UUID_PATTERN = re.compile(
-        r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
-    )
-
     def __init__(self, config: ExperimentConfig, project_root: Path) -> None:
         self.config = config
         self.project_root = project_root
@@ -93,45 +89,6 @@ class AdaptiveFinetuningLoop:
             return self.random.choice(models)
         return max(models, key=lambda model: scored_models[model])
 
-    @staticmethod
-    def _extract_json_block(answer: str) -> dict[str, Any] | None:
-        code_blocks = re.findall(r"```(?:json)?\s*(\{.*?\})\s*```", answer, flags=re.DOTALL)
-        for block in code_blocks:
-            try:
-                parsed = json.loads(block)
-                if isinstance(parsed, dict):
-                    return parsed
-            except json.JSONDecodeError:
-                continue
-        return None
-
-    def _extract_candidate_model_ids(self, answer: str) -> list[str]:
-        candidates: list[str] = []
-
-        parsed = self._extract_json_block(answer)
-        if parsed:
-            for key in ("recommended_model_id", "model_id", "training_job_id", "selected_model_id"):
-                value = parsed.get(key)
-                if isinstance(value, str) and value.strip():
-                    candidates.append(value.strip())
-
-        uuid_hits = re.findall(
-            r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}",
-            answer,
-        )
-        candidates.extend(uuid_hits)
-
-        base_hits = re.findall(r"base:[A-Za-z0-9._/-]+", answer)
-        candidates.extend(base_hits)
-
-        deduped: list[str] = []
-        seen: set[str] = set()
-        for item in candidates:
-            if item not in seen:
-                deduped.append(item)
-                seen.add(item)
-        return deduped
-
     def _query_adaptive_agent(
         self,
         *,
@@ -139,7 +96,7 @@ class AdaptiveFinetuningLoop:
         baseline_scores: dict[str, float],
         target_score: float,
         iteration: int,
-    ) -> tuple[str, int | None, str | None]:
+    ) -> dict[str, Any]:
         score_lines = "\n".join(f"- {model}: {score:.4f}" for model, score in baseline_scores.items())
         message = (
             "You are the adaptive fine-tuning system. Given benchmark scores, choose the next model to "
@@ -155,11 +112,12 @@ class AdaptiveFinetuningLoop:
             conversation_id=self._conversation_id,
             filters={"model_id": base_model},
         )
-        answer = str(payload.get("answer", ""))
-        self._conversation_id = payload.get("conversation_id")
-        tool_calls = payload.get("tool_calls_made")
-        tool_count = int(tool_calls) if isinstance(tool_calls, int) else None
-        return answer, tool_count, self._conversation_id
+        self._conversation_id = (
+            str(payload.get("conversation_id"))
+            if payload.get("conversation_id") is not None
+            else self._conversation_id
+        )
+        return payload
 
     def _normalize_candidate_model_id(self, model_id: str) -> str | None:
         if self.client.model_available_for_inference(model_id):
@@ -214,22 +172,27 @@ class AdaptiveFinetuningLoop:
             for iteration in range(1, self.config.policy.max_iterations + 1):
                 base_model = self._pick_base_model(scored_models)
                 pre_score = scored_models[base_model]
-                answer, tool_calls, conversation_id = self._query_adaptive_agent(
+                adaptive_payload = self._query_adaptive_agent(
                     base_model=base_model,
                     baseline_scores=scored_models,
                     target_score=self.config.policy.target_score,
                     iteration=iteration,
                 )
-                candidates = self._extract_candidate_model_ids(answer)
-                tuned_model = next(
-                    (
-                        normalized
-                        for model_id in candidates
-                        for normalized in [self._normalize_candidate_model_id(model_id)]
-                        if normalized
-                    ),
-                    base_model,
+                answer = str(adaptive_payload.get("answer", ""))
+                tool_calls = adaptive_payload.get("tool_calls_made")
+                tool_count = int(tool_calls) if isinstance(tool_calls, int) else None
+                conversation_id = (
+                    str(adaptive_payload.get("conversation_id"))
+                    if adaptive_payload.get("conversation_id") is not None
+                    else self._conversation_id
                 )
+                recommended_model_id_raw = adaptive_payload.get("recommended_model_id")
+                recommended_model_id = (
+                    recommended_model_id_raw.strip()
+                    if isinstance(recommended_model_id_raw, str) and recommended_model_id_raw.strip()
+                    else base_model
+                )
+                tuned_model = self._normalize_candidate_model_id(recommended_model_id) or base_model
                 promoted_model = None
                 aggregate_score = pre_score
                 benchmark_results: list[dict[str, Any]] = []
@@ -246,7 +209,12 @@ class AdaptiveFinetuningLoop:
                             best_score = tuned_score
                             best_model = tuned_model
 
-                finetune_job_id = tuned_model if self.UUID_PATTERN.match(tuned_model) else None
+                finetune_job_id_raw = adaptive_payload.get("training_job_id")
+                finetune_job_id = (
+                    finetune_job_id_raw.strip()
+                    if isinstance(finetune_job_id_raw, str) and finetune_job_id_raw.strip()
+                    else None
+                )
                 history.append(
                     IterationRecord(
                         iteration=iteration,
@@ -258,7 +226,8 @@ class AdaptiveFinetuningLoop:
                         promoted_model=promoted_model,
                         agent_answer=answer,
                         conversation_id=conversation_id,
-                        tool_calls_made=tool_calls,
+                        tool_calls_made=tool_count,
+                        adaptive_response=adaptive_payload,
                     )
                 )
 
